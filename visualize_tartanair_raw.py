@@ -95,6 +95,12 @@ def show_seg_and_image(sequence_path, mode="Easy"):
 
 
 if __name__ == "__main__":
-    data_root = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir/seasonsforest_winter"
+    data_root = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir/neighborhood"
+    semantic_lable = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir/neighborhood/Easy/P000/seg_left/000000_left_seg.npy"
+    semantic = np.load(semantic_lable)
+    seg = seg2vis(semantic)
+    cv2.imshow("seg",seg)
+    cv2.waitKey(0)
+
     # depth = data_root + "/Easy/P000/depth_left/000020_left_depth.npy"
-    show_seg_and_image(data_root,"Easy")
+    # show_seg_and_image(data_root,"Easy")
