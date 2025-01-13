@@ -1,0 +1,1 @@
+python download_training.py --output-dir /home/dji/uav_group_sharespace/SharedDatasets/TartanAir  --rgb --depth --seg --unzip
