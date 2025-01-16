@@ -197,7 +197,7 @@ def main():
         # "amusement",
         # "gascola",
         # "oldtown",
-        "seasonsforest",
+        # "seasonsforest",
     ]
     tartanair_base_path = "/home/dji/workspace/tartanair_tools/data/TartanAir"
     kitti_base_path = "/home/dji/workspace/tartanair_tools/data/TartanAirKitti"  # Assuming this is the base KITTI path
