@@ -11,7 +11,7 @@ import open3d as o3d
 
 # check voxelizer
 semantic_rgb_remap = {
-    50: [0, 0, 0],  # 建筑
+    50: [150, 150, 0],  # 建筑
     40: [128, 64, 128],  # 马路地面
     49: [107, 142, 35],  # 草坪地面
     70: [0, 102, 0],  # 植物
@@ -85,7 +85,7 @@ oldtown_remap = {
     209: 81, 128: 81
 }
 
-seasonforest_remap = {
+seasonsforest_remap = {
     # 建筑/结构
     246: 50, 
     239: 50, 
@@ -228,18 +228,19 @@ def remap_tartanair_seg_to_kitti_label(seg, type= "neighborhood"):
         remap_dict = gascola_remap
     elif type == "oldtown":
         remap_dict = oldtown_remap
-    elif type == "seasonforest":
-        remap_dict = seasonforest_remap
+    elif type == "seasonsforest":
+        remap_dict = seasonsforest_remap
     else:
         raise ValueError("Invalid type")
     for k, v in remap_dict.items():
         kitti_matrix[tartan_air_label == k] = v
     return kitti_matrix
 
-def generate_semantic_pointcloud(depth, cam_k, seg):
+def generate_semantic_pointcloud(depth, seg, cam_k):
     cam_k_inv = np.linalg.inv(cam_k)
     height, width = depth.shape
     seg = seg.reshape(height, width)
+    cam_k = np.array(cam_k).reshape(3, 3)
     points = []
     for v in range(height):
         for u in range(width):
@@ -253,13 +254,18 @@ def generate_semantic_pointcloud(depth, cam_k, seg):
             points.append([X, Y, Z, seg[v, u]])
     return np.array(points)
 
-def visualize_point_cloud_with_semantics(point_cloud_data, semantic_to_rgb_map):
+def visualize_point_cloud_with_semantics(point_cloud_data, semantic_to_rgb_map, camera_view = None):
     """
     可视化点云数据，并根据 semantic 映射 RGB 颜色。
     
     参数:
         point_cloud_data (numpy.ndarray): 点云数据，形状为 [N, 4]，格式为 [x, y, z, semantic]。
         semantic_to_rgb_map (dict): 语义到 RGB 的映射，例如 {0: (255, 0, 0), 1: (0, 255, 0)}。
+        view angle np.array([4,4]): camera view angle
+        [[1,0,0, 0],
+        [0,1,0, 0],
+        [0,0,1, 5],
+        [0,0,0, 1]]
     """
     # 检查数据格式
     if point_cloud_data.shape[1] != 4:
@@ -278,21 +284,26 @@ def visualize_point_cloud_with_semantics(point_cloud_data, semantic_to_rgb_map):
         rgb_normalized = np.array(rgb) / 255.0
         colors[semantics == semantic_value] = rgb_normalized
 
+    if camera_view is None:
+        camera_view = np.array([[1, 0, 0, 0],
+                                [0, 1, 0, 0],
+                                [0, 0, 1, 5],
+                                [0, 0, 0, 1]])
     # 创建 Open3D 的点云对象
     vis = o3d.visualization.Visualizer()
     vis.create_window()
     point_cloud_o3d = o3d.geometry.PointCloud()
     point_cloud_o3d.points = o3d.utility.Vector3dVector(points)
     point_cloud_o3d.colors = o3d.utility.Vector3dVector(colors)
+    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+    size=0.5, origin=[0, 0, 0])
 
+    vis.add_geometry(coordinate_frame) 
     vis.add_geometry(point_cloud_o3d)
     ctr = vis.get_view_control()
     ctr.set_front([0, 0, 0])
     camera_params = ctr.convert_to_pinhole_camera_parameters()
-    camera_params.extrinsic = np.array([[1, 0, 0, 0],
-                                        [0, 1, 0, 0],
-                                        [0, 0, 1, 0],
-                                        [0, 0, 0, 1]])
+    camera_params.extrinsic = camera_view
     ctr.convert_from_pinhole_camera_parameters(camera_params)
     vis.run()
     vis.destroy_window()
@@ -336,6 +347,34 @@ def visualize_semantic_seg(seg):
 def visualize_depth(depth):
     pass
 
+def convert_to_depth_image(depth):
+    UINT16_MAX = 65535
+    # 创建一个与输入深度图相同形状的数组
+    output_depth_map = np.full_like(depth, UINT16_MAX, dtype=np.uint16)
+    # 找到深度值小于等于 1000 的区域
+    valid_mask = depth <= 1000
+
+    # 对有效区域的深度值进行转换
+    output_depth_map[valid_mask] = (depth[valid_mask] * 256.0).astype(np.uint16)
+    return output_depth_map
+
+def check_depth_png(depth_path):
+    depth = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+    depth = depth.astype(np.float32) / 256
+    print(depth.shape)
+
+def read_kitti_poses(kitti_pose):
+    poses = []
+    with open(kitti_pose, 'r') as f:
+        for line in f:
+            pose = np.array(list(map(float, line.strip().split())))
+            poses.append(pose)
+    return np.array(poses)
+
+def read_semantic_pointcloud(file_path):
+    pointcloud = np.load(file_path)
+    
+    
 
 # visualize poses in kitti format
 def visualize_poses(poses):
@@ -349,7 +388,8 @@ def visualize_poses(poses):
 def transform_tartanair_poses_to_kitti_poses(tartan_air_file,kitti_pose_file):
     tartan_air_poses = read_tartanair_pose(tartan_air_file)
     kitti_poses = transform_tartanair_pose_in_kitti_format(tartan_air_poses)
-    write_poses_to_file(kitti_pose_file, kitti_poses)
+    frd_kitti_poses = ned_poses_to_frd_poses(kitti_poses)
+    write_poses_to_file(kitti_pose_file, frd_kitti_poses)
     print(f"Transformed poses from {tartan_air_file} are saved to {kitti_pose_file}")
     return  kitti_poses
     
@@ -357,12 +397,12 @@ def transform_tartanair_poses_to_kitti_poses(tartan_air_file,kitti_pose_file):
         
 if __name__ == "__main__":
     # this 
-    # pose_file = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir_tiny/abandonedfactory/Easy/P011/pose_left.txt"
+    pose_file = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir_tiny/abandonedfactory/Easy/P011/pose_left.txt"
     # tartan_air_poses = read_tartanair_pose(pose_file)
     # ned_kitti_poses = transform_tartanair_pose_in_kitti_format(tartan_air_poses)
     # frd_kitti_poses = ned_poses_to_frd_poses(ned_kitti_poses)
-    # # write_poses_to_file("/home/dji/workspace/tartanair_tools/test_frd_kitti_poses.txt", frd_kitti_poses)
-    # # kitti_poses = transform_tartanair_poses_to_kitti_poses("/home/dji/uav_group_sharespace/SharedDatasets/TartanAir_tiny/abandonedfactory/Easy/P011/pose_left.txt","/home/dji/workspace/tartanair_tools/test_kitti_poses.txt")
+    # write_poses_to_file("/home/dji/workspace/tartanair_tools/test_frd_kitti_poses.txt", frd_kitti_poses)
+    # kitti_poses = transform_tartanair_poses_to_kitti_poses("/home/dji/uav_group_sharespace/SharedDatasets/TartanAir_tiny/abandonedfactory/Easy/P011/pose_left.txt","/home/dji/workspace/tartanair_tools/test_kitti_poses.txt")
     # visualize_poses(ned_kitti_poses)
     # depth_file = "/home/dji/uav_group_sharespace/SharedDatasets/TartanAir_tiny/abandonedfactory/Easy/P000/depth_left/000000_left_depth.npy"
     # depth = read_tartanair_depth(depth_file)
@@ -377,7 +417,7 @@ if __name__ == "__main__":
     cam_k = np.array(camera_intrinsics)
     seg = read_tartanair_semantic_seg(semantic_lable)
     seg = remap_tartanair_seg_to_kitti_label(seg, type="neighborhood")
-    pointcloud = generate_semantic_pointcloud(depth, cam_k, seg)
+    pointcloud = generate_semantic_pointcloud(depth, seg, cam_k)
     visualize_point_cloud_with_semantics(pointcloud, semantic_rgb_remap)
 
     # pass
