@@ -3,11 +3,11 @@ import threading
 import subprocess
 
 # 定义目标文件夹的路径
-TARGET_FOLDER = "/home/dji/workspace/tartanair_tools/data/TartanAirKitti/seasonsforest"  # 替换为实际文件夹路径
+TARGET_FOLDER = "/home/dji/uav_nas_local/SharedDatasets/TartanAirKitti/neighborhood"  # 替换为实际文件夹路径
 
 # 定义工具和配置文件
 GEN_TOOL = "/home/dji/workspace/voxelizer/bin/gen_data"
-CONFIG_FILE = "/home/dji/workspace/voxelizer/bin/setting.cfg"
+CONFIG_FILE = "/home/dji/workspace/voxelizer/bin/settings.cfg"
 
 def execute_command(subfolder):
     """
