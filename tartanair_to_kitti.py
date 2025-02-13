@@ -79,53 +79,56 @@ def generate_kitti_sub_folder(tartanair_path, kitti_path, data_name="neighborhoo
     # copy left_seg and left_depth into kitti_label and kitti_pesudo_lidar and kitti_depth
     left_seg_files = os.listdir(left_seg_path)
     left_seg_files = sorted(left_seg_files)
-
     for left_seg_file in tqdm.tqdm(left_seg_files, desc="Processing semantic point cloud"):
-        left_seg_file_path = os.path.join(left_seg_path, left_seg_file)
-        cor_depth_name = left_seg_file.replace("seg", "depth")
-        left_depth_file_path = os.path.join(left_depth_path, cor_depth_name)
-        
-        left_seg = np.load(left_seg_file_path)# tartan air label
-        left_seg = utils.remap_tartanair_seg_to_kitti_label(left_seg, type=data_name)
-        left_depth = np.load(left_depth_file_path)
+        try:
+            left_seg_file_path = os.path.join(left_seg_path, left_seg_file)
+            cor_depth_name = left_seg_file.replace("seg", "depth")
+            left_depth_file_path = os.path.join(left_depth_path, cor_depth_name)
+            
+            left_seg = np.load(left_seg_file_path)# tartan air label
+            left_seg = utils.remap_tartanair_seg_to_kitti_label(left_seg, type=data_name)
+            left_depth = np.load(left_depth_file_path)
 
-        semantic_pointclouds = utils.generate_semantic_pointcloud(left_depth, left_seg, camera_intrinsics)
-        semantic_pointclouds = semantic_pointclouds.reshape(-1, 4)
+            semantic_pointclouds = utils.generate_semantic_pointcloud(left_depth, left_seg, camera_intrinsics)
+            semantic_pointclouds = semantic_pointclouds.reshape(-1, 4)
 
-        # [x, y, z, label]
+            # [x, y, z, label]
 
-        # rotate point cloud
-        R_frd_flu = np.array([  [0.0, 0.0, 1.0, 0.0],
-                                [-1.0, 0.0, 0.0, 0.0],
-                                [0.0, -1.0, 0.0, 0.0],
-                                [0.0, 0.0, 0.0, 1.0]])
-        point_clouds = R_frd_flu @ semantic_pointclouds.T
-        point_clouds = point_clouds.T
-        point_clouds = point_clouds.astype(np.float32)
+            # rotate point cloud
+            R_frd_flu = np.array([  [0.0, 0.0, 1.0, 0.0],
+                                    [-1.0, 0.0, 0.0, 0.0],
+                                    [0.0, -1.0, 0.0, 0.0],
+                                    [0.0, 0.0, 0.0, 1.0]])
+            point_clouds = R_frd_flu @ semantic_pointclouds.T
+            point_clouds = point_clouds.T
+            point_clouds = point_clouds.astype(np.float32)
 
-        # utils.visualize_point_cloud_with_semantics(point_clouds, utils.semantic_rgb_remap,camera_view)
-        # save semantic point cloud
-        kitti_pesudo_lidar_name = left_seg_file.split("_")[0] + ".bin"
-        kitti_pesudo_lidar_file_path = os.path.join(kitti_pesudo_lidar, kitti_pesudo_lidar_name)
-        point_clouds.tofile(kitti_pesudo_lidar_file_path)
+            # utils.visualize_point_cloud_with_semantics(point_clouds, utils.semantic_rgb_remap,camera_view)
+            # save semantic point cloud
+            kitti_pesudo_lidar_name = left_seg_file.split("_")[0] + ".bin"
+            kitti_pesudo_lidar_file_path = os.path.join(kitti_pesudo_lidar, kitti_pesudo_lidar_name)
+            point_clouds.tofile(kitti_pesudo_lidar_file_path)
 
-        kitti_label_name = left_seg_file.split("_")[0] + ".label"
-        kitti_label_file_path = os.path.join(kitti_label, kitti_label_name)
-        valid_labels = point_clouds[:, 3].astype(np.int32)
-        valid_labels.tofile(kitti_label_file_path)
+            kitti_label_name = left_seg_file.split("_")[0] + ".label"
+            kitti_label_file_path = os.path.join(kitti_label, kitti_label_name)
+            valid_labels = point_clouds[:, 3].astype(np.int32)
+            valid_labels.tofile(kitti_label_file_path)
 
-        kitti_depth_name = left_seg_file.split("_")[0] + ".png"
-        kitti_depth_file_path = os.path.join(kitti_depth, kitti_depth_name)
-        left_depth = utils.convert_to_depth_image(left_depth)
-        left_depth = left_depth.astype(np.uint16)
-        cv2.imwrite(kitti_depth_file_path, left_depth)
+            kitti_depth_name = left_seg_file.split("_")[0] + ".png"
+            kitti_depth_file_path = os.path.join(kitti_depth, kitti_depth_name)
+            left_depth = utils.convert_to_depth_image(left_depth)
+            left_depth = left_depth.astype(np.uint16)
+            cv2.imwrite(kitti_depth_file_path, left_depth)
 
-        if verbose:
-            camera_view = np.array([[0.0, -1.0, 0.0, 0.0],
-            [0.0, 0.0, -1.0, 0.0],
-            [1.0, 0.0, 0.0, 5.0],
-            [0.0, 0.0, 0.0, 1.0]])
-            utils.visualize_point_cloud_with_semantics(point_clouds, utils.semantic_rgb_remap, camera_view)
+            if verbose:
+                camera_view = np.array([[0.0, -1.0, 0.0, 0.0],
+                [0.0, 0.0, -1.0, 0.0],
+                [1.0, 0.0, 0.0, 5.0],
+                [0.0, 0.0, 0.0, 1.0]])
+                utils.visualize_point_cloud_with_semantics(point_clouds, utils.semantic_rgb_remap, camera_view)
+        except:
+            print({f"bad format jump over {left_image_file}\n"})
+            continue
 
     #     # if 
     #     if verbose:
