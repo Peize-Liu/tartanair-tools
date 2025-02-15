@@ -168,7 +168,7 @@ def generate_kitti_sub_folder(tartanair_path, kitti_path, data_name="neighborhoo
     #     vis.destroy_window()
 
 
-def convert_tartanair_to_kitti(tartanair_secense_path, kitti_path):
+def convert_tartanair_to_kitti(tartanair_secense_path, kitti_path, convert_num = -1): # con 
     tartanair_paths = [os.path.join(tartanair_secense_path,"Easy"), os.path.join(tartanair_secense_path,"Hard")]
     reindex = 00
     sequnce_name = os.path.basename(tartanair_secense_path)
@@ -176,6 +176,8 @@ def convert_tartanair_to_kitti(tartanair_secense_path, kitti_path):
         sequences = os.listdir(tartanair_path)
         sequences = sorted(sequences)
         for sequence in sequences:
+            if (reindex >= convert_num and convert_num > 0):
+                break
             reindex_str= format(reindex, '02d')
             sub_sequence_path = os.path.join(tartanair_path, sequence)
             output_kitti_path = os.path.join(kitti_path, reindex_str)
@@ -190,52 +192,34 @@ def convert_tartanair_to_kitti(tartanair_secense_path, kitti_path):
 def process_dataset(dataset, tartanair_base_path, kitti_base_path):
     tartanair_path = os.path.join(tartanair_base_path, dataset)
     kitti_path = os.path.join(kitti_base_path, dataset)
-    convert_tartanair_to_kitti(tartanair_path, kitti_path)
+    convert_tartanair_to_kitti(tartanair_path, kitti_path, 5)
     # print(f"Saved {kitti_path}")
+
+from concurrent.futures import ProcessPoolExecutor  # 修改导入的模块
 
 # Main function
 def main():
     dataset_list = [
         "neighborhood",
-        # "amusement",
-        # "gascola",
-        # "oldtown",
-        # "seasonsforest",
+        "amusement",
+        "gascola",
+        "oldtown",
+        "seasonsforest",
     ]
     tartanair_base_path = "/home/dji/workspace/tartanair_tools/data/TartanAir"
-    kitti_base_path = "/home/dji/workspace/tartanair_tools/data/TartanAirKitti"  # Assuming this is the base KITTI path
+    kitti_base_path = "/home/dji/workspace/tartanair_tools/data/TartanAirKittiOccT"
 
-    # Use ThreadPoolExecutor for multi-threading
-    with ThreadPoolExecutor() as executor:
+    # 使用 ProcessPoolExecutor 替代 ThreadPoolExecutor
+    with ProcessPoolExecutor() as executor:
         # Submit tasks for each dataset
         futures = [
             executor.submit(process_dataset, dataset, tartanair_base_path, kitti_base_path)
             for dataset in dataset_list
         ]
 
-        # Optionally, wait for all tasks to complete
+        # 等待所有任务完成
         for future in futures:
-            future.result()  # This will raise an exception if any task fails
+            future.result()
 
 if __name__ == "__main__":
-    # tartanair_path = "/home/dji/workspace/tartanair_tools/data/TartanAir/neighborhood"
-    # kitti_path = "/home/dji/workspace/tartanair_tools/data/TartanAirKitti/neighborhood_tiny"
-    # convert_tartanair_to_kitti(tartanair_path, kitti_path)
-    
-    
-    
-    # dataset_list = [
-    #     "neighborhood",
-    #     "amusement",
-    #     "gascola",
-    #     "oldtown",
-    #     "seasonforest",
-    # ]
-    # tartanair_path = "/home/dji/workspace/tartanair_tools/data/TartanAir"
-
-    # for dataset in dataset_list:
-    #     tartanair_path = os.path.join(tartanair_path, dataset)
-    #     kitti_path = os.path.join(kitti_path, dataset)
-    #     convert_tartanair_to_kitti(tartanair_path, kitti_path)
-    #     print(f"Saved {kitti_path}")
     main()
