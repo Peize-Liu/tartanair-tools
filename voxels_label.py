@@ -3,7 +3,7 @@ import threading
 import subprocess
 
 # 定义目标文件夹的路径
-TARGET_FOLDER = "/home/dji/workspace/tartanair_tools/data/TartanAirKittiOcc/seasonsforest"  # 替换为实际文件夹路径
+TARGET_FOLDER = "/home/dji/workspace/tartanair_tools/data/TartanAirKittiOccSmall"  # 替换为实际文件夹路径
 
 # # 定义工具和配置文件
 # GEN_TOOL = "/home/dji/workspace/voxelizer/bin/gen_data"
@@ -14,7 +14,7 @@ GEN_TOOL = "/home/dji/workspace/voxelizer/bin/gen_data"
 CONFIG_FILE = "/home/dji/workspace/voxelizer/bin/settings.cfg"
 
 # 定义最大线程数
-MAX_THREADS = 1
+MAX_THREADS = 10
 semaphore = threading.Semaphore(MAX_THREADS)
 
 def execute_command(subfolder):
@@ -22,7 +22,7 @@ def execute_command(subfolder):
     执行生成命令的线程函数
     """
     with semaphore:
-        voxels_path = os.path.join(subfolder, "voxels")
+        voxels_path = os.path.join(subfolder, "voxels_small")
         if not os.path.exists(voxels_path):
             os.makedirs(voxels_path)
         command = [GEN_TOOL, CONFIG_FILE, subfolder, voxels_path]
